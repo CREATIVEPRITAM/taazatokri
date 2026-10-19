@@ -43,8 +43,10 @@ export const App: React.FC = () => {
             <Route path="/cod-partner-payments" element={<CodPartnerPaymentsPage />} />
             <Route path="/notifications-offers" element={<NotificationsOffersPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/area-management" element={<SettingsPage />} />
 
             {/* URL Aliases for consistency */}
+            <Route path="/area-management" element={<Navigate to="/settings" replace />} />
             <Route path="/settlements" element={<Navigate to="/cod-partner-payments" replace />} />
             <Route path="/notifications" element={<Navigate to="/notifications-offers" replace />} />
           </Route>

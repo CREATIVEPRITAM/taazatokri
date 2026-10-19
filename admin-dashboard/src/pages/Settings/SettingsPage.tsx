@@ -1,6 +1,6 @@
 import React from 'react';
-import { ModulePlaceholder } from '../../components/layout/ModulePlaceholder';
+import { AreaManagementPage } from '../AreaManagement/AreaManagementPage';
 
 export const SettingsPage: React.FC = () => {
-  return <ModulePlaceholder title="Settings" />;
+  return <AreaManagementPage />;
 };

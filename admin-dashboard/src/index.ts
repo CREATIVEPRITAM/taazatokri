@@ -14,4 +14,6 @@ export * from './hooks/usePurchaseRequirementPreview';
 export * from './hooks/useDeliveryOverview';
 export * from './pages/Login/LoginPage';
 export * from './pages/Dashboard/DashboardPage';
+export * from './pages/AreaManagement/AreaManagementPage';
+export * from './pages/Settings/SettingsPage';
 export * from './App';
