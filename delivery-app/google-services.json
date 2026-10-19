@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "982526310690",
+    "project_id": "taazatokri-61bcf",
+    "storage_bucket": "taazatokri-61bcf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:982526310690:android:876642e1b083f6352f0d7b",
+        "android_client_info": {
+          "package_name": "com.taazatokari.customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6NmVyImRuyNrx5MIKxZyRJGgI8Afdfag"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:982526310690:android:d1672e1e183f34af2f0d7b",
+        "android_client_info": {
+          "package_name": "com.taazatokari.delivery"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6NmVyImRuyNrx5MIKxZyRJGgI8Afdfag"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

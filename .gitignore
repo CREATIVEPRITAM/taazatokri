@@ -50,3 +50,5 @@ firestore-debug.log*
 ui-debug.log*
 functions/node_modules/
 functions/lib/
+firebase/functions/node_modules/
+firebase/functions/lib/

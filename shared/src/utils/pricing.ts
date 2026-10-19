@@ -4,8 +4,11 @@ import { BillSummary } from '../types/order';
 /**
  * Checks whether an items total meets the minimum order requirement (₹50 in V1).
  */
-export function isMinimumOrderMet(itemsTotal: number): boolean {
-  return itemsTotal >= BUSINESS_RULES.MIN_ORDER_AMOUNT;
+export function isMinimumOrderMet(
+  itemsTotal: number,
+  minOrderAmount: number = BUSINESS_RULES.MIN_ORDER_AMOUNT
+): boolean {
+  return itemsTotal >= minOrderAmount;
 }
 
 /**

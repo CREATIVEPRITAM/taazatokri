@@ -26,6 +26,6 @@ export const MESSAGES = {
   ORDERING_CLOSED: (openingTime: string = DEFAULT_ORDER_OPENING_TIME) =>
     `Ordering is currently closed. The next ordering window opens at ${openingTime}.`,
   CANCELLATION_CLOSED: 'Cancellation window closed.',
-  MIN_ORDER_REQUIRED: (min = BUSINESS_RULES.MIN_ORDER_AMOUNT) =>
+  MIN_ORDER_REQUIRED: (min: number = BUSINESS_RULES.MIN_ORDER_AMOUNT) =>
     `Minimum order amount is ₹${min} to proceed to checkout.`,
 } as const;

@@ -4,11 +4,15 @@
   "private": true,
   "description": "TaazaTokari Production Monorepo: Customer App, Delivery App, Admin Dashboard, Backend & Shared Core",
   "workspaces": [
-    "shared"
+    "shared",
+    "admin-dashboard",
+    "firebase/functions"
   ],
   "scripts": {
     "build:shared": "npm run build --workspace=shared",
-    "typecheck": "npm run typecheck --workspace=shared"
+    "build:functions": "npm run build --workspace=@taazatokri/functions",
+    "build:admin": "npm run build --workspace=@taazatokri/admin-dashboard",
+    "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
     "typescript": "^5.7.3"
