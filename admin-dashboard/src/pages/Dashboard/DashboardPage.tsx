@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ShoppingBag,
   Clock,
@@ -15,32 +15,50 @@ import {
   StatCard,
   StatCardProps,
   DateSelector,
+  DateRangeOption,
   PurchaseRequirementPreview,
   DeliveryOverview,
   AttentionRequired,
   QuickActions,
 } from '../../components/dashboard';
 import { useDashboardSummary } from '../../hooks/useDashboardSummary';
+import { getISTComponents, getNextDeliveryDate } from '@taazatokri/shared';
 import '../../styles/dashboard.css';
 
 export const DashboardPage: React.FC = () => {
-  const { metrics, loading, errors, refetch } = useDashboardSummary();
+  const [dateOption, setDateOption] = useState<DateRangeOption>('today');
+
+  // Compute selected delivery date string (YYYY-MM-DD in IST)
+  const selectedDeliveryDate = useMemo(() => {
+    if (dateOption === 'tomorrow') {
+      return getNextDeliveryDate();
+    }
+    if (dateOption === 'yesterday') {
+      const yesterdayDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      return getISTComponents(yesterdayDate).dateString;
+    }
+    return getISTComponents().dateString;
+  }, [dateOption]);
+
+  const { metrics, loading, errors, refetch } = useDashboardSummary(selectedDeliveryDate);
 
   // Format currency in Indian locale (₹)
   const formatCurrency = (amount: number): string => {
     return `₹${amount.toLocaleString('en-IN')}`;
   };
 
-  // 10 Approved V1 Summary Cards connected strictly to real Firestore data
+  // 10 Approved V1 Summary Cards
+  // Operational cards 1-6 are scoped strictly to selectedDeliveryDate
+  // Global cards 7-10 remain global across the catalog/database
   const summaryCards: StatCardProps[] = [
     {
       id: 'stat-today-orders',
-      label: "Today's Orders",
+      label: dateOption === 'today' ? "Today's Orders" : 'Selected Date Orders',
       value: metrics.todayOrders,
       icon: ShoppingBag,
       variant: 'primary',
-      subtitle: 'Scheduled for delivery today',
-      badge: 'Today',
+      subtitle: `Delivery date: ${selectedDeliveryDate}`,
+      badge: dateOption === 'today' ? 'Today' : dateOption,
       loading,
     },
     {
@@ -63,7 +81,7 @@ export const DashboardPage: React.FC = () => {
     },
     {
       id: 'stat-delivered',
-      label: 'Delivered Today',
+      label: dateOption === 'today' ? 'Delivered Today' : 'Delivered',
       value: metrics.deliveredToday,
       icon: CheckCircle2,
       variant: 'success',
@@ -82,7 +100,7 @@ export const DashboardPage: React.FC = () => {
     },
     {
       id: 'stat-cod-collection',
-      label: "Today's COD Collection",
+      label: dateOption === 'today' ? "Today's COD Collection" : 'COD Collection',
       value: formatCurrency(metrics.todayCodCollection),
       icon: IndianRupee,
       variant: 'success',
@@ -95,7 +113,7 @@ export const DashboardPage: React.FC = () => {
       value: metrics.totalCustomers,
       icon: Users,
       variant: 'info',
-      subtitle: 'Registered users',
+      subtitle: 'All-time registered users',
       loading,
     },
     {
@@ -134,16 +152,19 @@ export const DashboardPage: React.FC = () => {
         <div className="dashboard-topbar-left">
           <h2 className="dashboard-greeting-title">Operational Control Center</h2>
           <div className="dashboard-subtitle">
-            <span>Next Morning Delivery Window: 7:00 AM – 9:30 AM IST</span>
+            <span>Delivery Window: 7:00 AM – 9:30 AM IST</span>
             <span>•</span>
-            <span className="static-dev-badge" style={{ color: 'var(--primary-800)', borderColor: 'var(--primary-300)' }}>
-              Live Firestore Summary
+            <span
+              className="static-dev-badge"
+              style={{ color: 'var(--primary-800)', borderColor: 'var(--primary-300)' }}
+            >
+              Snapshot: {selectedDeliveryDate}
             </span>
           </div>
         </div>
 
-        {/* Date Selector (UI Only) */}
-        <DateSelector />
+        {/* Date Selector */}
+        <DateSelector selectedRange={dateOption} onChangeRange={setDateOption} />
       </div>
 
       {/* Non-blocking Error Banner if any partial queries fail */}
@@ -165,7 +186,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* 1. Summary Cards Section (10 Live Firestore Metrics) */}
+      {/* 1. Summary Cards Section (6 Scoped Operational Metrics + 4 Global Cards) */}
       <section aria-label="Key Operational Metrics">
         <div className="summary-cards-grid">
           {summaryCards.map((card) => (

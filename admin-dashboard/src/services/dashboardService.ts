@@ -43,78 +43,133 @@ async function getCollectionCount(q: Query | CollectionReference): Promise<numbe
 }
 
 /**
- * Fetches Today's Orders metrics (Total Orders, Delivered Today, Today's COD Collection)
- * for the selected date (defaulting to current IST date).
+ * Fetches all delivery & order operational metrics scoped strictly to the selected deliveryDate.
+ * Computes:
+ * - Today's Orders / Selected Date Orders: deliveryDate == selectedDate
+ * - Pending: deliveryDate == selectedDate AND orderStatus in ['order_placed', 'confirmed']
+ * - Out for Delivery: deliveryDate == selectedDate AND orderStatus == 'out_for_delivery'
+ * - Delivered: deliveryDate == selectedDate AND orderStatus == 'delivered'
+ * - Failed Delivery: deliveryDate == selectedDate AND orderStatus == 'failed'
+ * - COD Collection: deliveryDate == selectedDate AND orderStatus == 'delivered' AND codCollected == true
  */
-export async function fetchTodayOrdersMetrics(selectedDate: string) {
+export async function fetchDeliveryDateMetrics(selectedDate: string) {
   const ordersRef = collection(db, COLLECTIONS.ORDERS);
-  const todayQuery = query(ordersRef, where('deliveryDate', '==', selectedDate));
-  const snap = await getDocs(todayQuery);
+  const q = query(ordersRef, where('deliveryDate', '==', selectedDate));
+  const snap = await getDocs(q);
 
   let todayOrders = snap.size;
+  let pendingOrders = 0;
+  let outForDeliveryOrders = 0;
   let deliveredToday = 0;
+  let failedOrders = 0;
   let todayCodCollection = 0;
 
   snap.forEach((docSnap) => {
     const data = docSnap.data();
-    if (data.orderStatus === 'delivered') {
+    const status = data.orderStatus;
+
+    if (status === 'order_placed' || status === 'confirmed') {
+      pendingOrders += 1;
+    } else if (status === 'out_for_delivery') {
+      outForDeliveryOrders += 1;
+    } else if (status === 'delivered') {
       deliveredToday += 1;
       if (data.codCollected === true) {
         const amount = data.billSummary?.grandTotal ?? data.grandTotal ?? 0;
         todayCodCollection += Number(amount || 0);
       }
+    } else if (status === 'failed') {
+      failedOrders += 1;
     }
   });
 
   return {
     todayOrders,
+    pendingOrders,
+    outForDeliveryOrders,
     deliveredToday,
+    failedOrders,
     todayCodCollection,
   };
 }
 
 /**
- * Fetches count of current orders awaiting fulfillment (order_placed, confirmed).
+ * Individual query helper for Pending orders for a specific deliveryDate.
  */
-export async function fetchPendingOrdersCount(): Promise<number> {
+export async function fetchPendingOrdersCount(selectedDate: string): Promise<number> {
   const q = query(
     collection(db, COLLECTIONS.ORDERS),
+    where('deliveryDate', '==', selectedDate),
     where('orderStatus', 'in', ['order_placed', 'confirmed'])
   );
   return getCollectionCount(q);
 }
 
 /**
- * Fetches count of orders currently out for delivery.
+ * Individual query helper for Out for Delivery orders for a specific deliveryDate.
  */
-export async function fetchOutForDeliveryOrdersCount(): Promise<number> {
+export async function fetchOutForDeliveryOrdersCount(selectedDate: string): Promise<number> {
   const q = query(
     collection(db, COLLECTIONS.ORDERS),
+    where('deliveryDate', '==', selectedDate),
     where('orderStatus', '==', 'out_for_delivery')
   );
   return getCollectionCount(q);
 }
 
 /**
- * Fetches count of orders whose current status is failed.
+ * Individual query helper for Delivered orders for a specific deliveryDate.
  */
-export async function fetchFailedOrdersCount(): Promise<number> {
+export async function fetchDeliveredOrdersCount(selectedDate: string): Promise<number> {
   const q = query(
     collection(db, COLLECTIONS.ORDERS),
+    where('deliveryDate', '==', selectedDate),
+    where('orderStatus', '==', 'delivered')
+  );
+  return getCollectionCount(q);
+}
+
+/**
+ * Individual query helper for Failed Delivery orders for a specific deliveryDate.
+ */
+export async function fetchFailedOrdersCount(selectedDate: string): Promise<number> {
+  const q = query(
+    collection(db, COLLECTIONS.ORDERS),
+    where('deliveryDate', '==', selectedDate),
     where('orderStatus', '==', 'failed')
   );
   return getCollectionCount(q);
 }
 
 /**
- * Fetches count of total customers stored in the 'users' collection.
+ * Individual query helper for COD Collection for a specific deliveryDate.
+ */
+export async function fetchCodCollection(selectedDate: string): Promise<number> {
+  const q = query(
+    collection(db, COLLECTIONS.ORDERS),
+    where('deliveryDate', '==', selectedDate),
+    where('orderStatus', '==', 'delivered'),
+    where('codCollected', '==', true)
+  );
+  const snap = await getDocs(q);
+  let total = 0;
+  snap.forEach((doc) => {
+    const data = doc.data();
+    const amount = data.billSummary?.grandTotal ?? data.grandTotal ?? 0;
+    total += Number(amount || 0);
+  });
+  return total;
+}
+
+/**
+ * Global card query: Count of total customers in the 'users' collection.
  */
 export async function fetchTotalCustomersCount(): Promise<number> {
   return getCollectionCount(collection(db, COLLECTIONS.USERS));
 }
 
 /**
- * Fetches count of delivery partners where status == 'active'.
+ * Global card query: Count of delivery partners where status == 'active'.
  */
 export async function fetchActiveDeliveryPartnersCount(): Promise<number> {
   const q = query(
@@ -125,14 +180,14 @@ export async function fetchActiveDeliveryPartnersCount(): Promise<number> {
 }
 
 /**
- * Fetches count of all products in the 'products' collection.
+ * Global card query: Count of all products in the 'products' collection.
  */
 export async function fetchTotalProductsCount(): Promise<number> {
   return getCollectionCount(collection(db, COLLECTIONS.PRODUCTS));
 }
 
 /**
- * Fetches count of categories where active == true.
+ * Global card query: Count of categories where active == true.
  */
 export async function fetchActiveCategoriesCount(): Promise<number> {
   const q = query(
@@ -144,7 +199,8 @@ export async function fetchActiveCategoriesCount(): Promise<number> {
 
 /**
  * Authoritative orchestrator for all 10 summary cards.
- * Runs queries concurrently and returns metrics with resilient partial-error tracking.
+ * Scopes the 6 operational delivery/order metrics to `selectedDate`,
+ * while keeping the 4 global catalog/user cards global.
  */
 export async function fetchDashboardSummary(
   targetDate?: string
@@ -166,79 +222,61 @@ export async function fetchDashboardSummary(
   };
 
   const results = await Promise.allSettled([
-    fetchTodayOrdersMetrics(selectedDate),
-    fetchPendingOrdersCount(),
-    fetchOutForDeliveryOrdersCount(),
-    fetchFailedOrdersCount(),
+    // 0: Operational batch query scoped to selected deliveryDate
+    fetchDeliveryDateMetrics(selectedDate),
+    // 1: Global: Total Customers
     fetchTotalCustomersCount(),
+    // 2: Global: Active Delivery Partners
     fetchActiveDeliveryPartnersCount(),
+    // 3: Global: Total Products
     fetchTotalProductsCount(),
+    // 4: Global: Active Categories
     fetchActiveCategoriesCount(),
   ]);
 
-  // 1. Today's Orders, Delivered Today, Today's COD Collection
+  // Operational metrics for selectedDate
   if (results[0].status === 'fulfilled') {
-    initialMetrics.todayOrders = results[0].value.todayOrders;
-    initialMetrics.deliveredToday = results[0].value.deliveredToday;
-    initialMetrics.todayCodCollection = results[0].value.todayCodCollection;
+    const op = results[0].value;
+    initialMetrics.todayOrders = op.todayOrders;
+    initialMetrics.pendingOrders = op.pendingOrders;
+    initialMetrics.outForDeliveryOrders = op.outForDeliveryOrders;
+    initialMetrics.deliveredToday = op.deliveredToday;
+    initialMetrics.failedOrders = op.failedOrders;
+    initialMetrics.todayCodCollection = op.todayCodCollection;
   } else {
-    console.error('[DashboardService] Error fetching today orders:', results[0].reason);
-    errors.push('Failed to load Today’s Orders metrics.');
+    console.error('[DashboardService] Error fetching operational metrics for date:', selectedDate, results[0].reason);
+    errors.push('Failed to load operational delivery metrics for the selected date.');
   }
 
-  // 2. Pending Orders
+  // Global: Total Customers
   if (results[1].status === 'fulfilled') {
-    initialMetrics.pendingOrders = results[1].value;
+    initialMetrics.totalCustomers = results[1].value;
   } else {
-    console.error('[DashboardService] Error fetching pending orders:', results[1].reason);
-    errors.push('Failed to load Pending Orders count.');
-  }
-
-  // 3. Out for Delivery Orders
-  if (results[2].status === 'fulfilled') {
-    initialMetrics.outForDeliveryOrders = results[2].value;
-  } else {
-    console.error('[DashboardService] Error fetching out for delivery:', results[2].reason);
-    errors.push('Failed to load Out for Delivery count.');
-  }
-
-  // 4. Failed Delivery Orders
-  if (results[3].status === 'fulfilled') {
-    initialMetrics.failedOrders = results[3].value;
-  } else {
-    console.error('[DashboardService] Error fetching failed deliveries:', results[3].reason);
-    errors.push('Failed to load Failed Deliveries count.');
-  }
-
-  // 5. Total Customers
-  if (results[4].status === 'fulfilled') {
-    initialMetrics.totalCustomers = results[4].value;
-  } else {
-    console.error('[DashboardService] Error fetching total customers:', results[4].reason);
+    console.error('[DashboardService] Error fetching total customers:', results[1].reason);
     errors.push('Failed to load Total Customers count.');
   }
 
-  // 6. Active Delivery Partners
-  if (results[5].status === 'fulfilled') {
-    initialMetrics.activeDeliveryPartners = results[5].value;
+  // Global: Active Delivery Partners
+  if (results[2].status === 'fulfilled') {
+    initialMetrics.activeDeliveryPartners = results[2].value;
   } else {
-    console.error('[DashboardService] Error fetching active partners:', results[5].reason);
+    console.error('[DashboardService] Error fetching active partners:', results[2].reason);
     errors.push('Failed to load Active Delivery Partners count.');
   }
 
-  // 7. Total Products
-  if (results[6].status === 'fulfilled') {
-    initialMetrics.totalProducts = results[6].value;
+  // Global: Total Products
+  if (results[3].status === 'fulfilled') {
+    initialMetrics.totalProducts = results[3].value;
   } else {
-    console.error('[DashboardService] Error fetching total products:', results[6].reason);
+    console.error('[DashboardService] Error fetching total products:', results[3].reason);
     errors.push('Failed to load Total Products count.');
   }
 
-  // 8. Active Categories
-  if (results[7].status === 'fulfilled') {
-    initialMetrics.activeCategories = results[7].value;
+  // Global: Active Categories
+  if (results[4].status === 'fulfilled') {
+    initialMetrics.activeCategories = results[4].value;
   } else {
-    console.error('[DashboardService] Error fetching active categories:', results[7].reason);
+    console.error('[DashboardService] Error fetching active categories:', results[4].reason);
     errors.push('Failed to load Active Categories count.');
   }
 
