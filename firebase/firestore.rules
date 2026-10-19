@@ -14,16 +14,62 @@ service cloud.firestore {
 
     /**
      * Authoritative Admin validation:
-     * - Checked via custom claims (admin == true or role == 'admin')
-     * - OR existence in the dedicated 'admins/{uid}' collection.
-     * Role attributes inside the 'users' collection are NEVER trusted for admin authorization.
+     * - Checked ONLY via dedicated server-issued boolean custom claim (admin == true)
+     * - OR existence of the caller's UID in the dedicated 'admins/{uid}' collection.
+     * Generic string tokens or user collection roles are NEVER trusted.
      */
     function isAdmin() {
       return isAuthenticated() && (
         request.auth.token.admin == true ||
-        request.auth.token.role == 'admin' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
+    }
+
+    // --- Delivery Partner Order Update Hardening ---
+    function isAssignedDeliveryPartner(orderData) {
+      return isAuthenticated() && orderData.assignedPartnerUid == request.auth.uid;
+    }
+
+    function isDeliveryPartnerOrderUpdateValid() {
+      let diff = request.resource.data.diff(resource.data);
+      let affectedKeys = diff.affectedKeys();
+
+      // Whitelist of fields Delivery Partner is permitted to modify
+      let allowedKeys = [
+        'orderStatus',
+        'codCollected',
+        'failureReason',
+        'failureNote',
+        'timeline',
+        'updatedAt'
+      ].toSet();
+
+      let onlyAllowedKeysChanged = affectedKeys.hasOnly(allowedKeys);
+
+      let currentStatus = resource.data.orderStatus;
+      let targetStatus = request.resource.data.orderStatus;
+
+      // Enforce explicit state transitions:
+      // - assigned/confirmed/order_placed -> out_for_delivery
+      // - out_for_delivery -> delivered (requires codCollected == true)
+      // - out_for_delivery -> failed (requires approved failureReason)
+      let validTransition =
+        (currentStatus in ['order_placed', 'confirmed', 'assigned'] && targetStatus == 'out_for_delivery') ||
+        (currentStatus == 'out_for_delivery' && targetStatus == 'delivered' && request.resource.data.codCollected == true) ||
+        (currentStatus == 'out_for_delivery' && targetStatus == 'failed' &&
+         request.resource.data.failureReason in ['customer_unavailable', 'not_reachable', 'address_issue', 'refused', 'other']);
+
+      // All business, financial, and address fields must remain strictly immutable
+      let immutableFieldsPreserved =
+        request.resource.data.id == resource.data.id &&
+        request.resource.data.customerId == resource.data.customerId &&
+        request.resource.data.assignedPartnerUid == resource.data.assignedPartnerUid &&
+        request.resource.data.items == resource.data.items &&
+        request.resource.data.billSummary == resource.data.billSummary &&
+        request.resource.data.deliveryAddress == resource.data.deliveryAddress &&
+        request.resource.data.deliveryDate == resource.data.deliveryDate;
+
+      return onlyAllowedKeysChanged && validTransition && immutableFieldsPreserved;
     }
 
     // --- Customers / Users (Dedicated 'users' collection) ---
@@ -101,7 +147,7 @@ service cloud.firestore {
 
     // --- Orders ---
     match /orders/{orderId} {
-      // READ: Customer who placed it, Assigned Delivery Partner (via assignedPartnerUid), or Admin
+      // READ: Customer owner, Assigned Partner (by assignedPartnerUid), or Admin
       allow read: if isAuthenticated() && (
         resource.data.customerId == request.auth.uid ||
         resource.data.assignedPartnerUid == request.auth.uid ||
@@ -109,22 +155,15 @@ service cloud.firestore {
       );
 
       // CREATE: Strictly DENIED for customers directly!
-      // createOrder Cloud Function is the ONLY authoritative write path.
-      // Admin SDK in Cloud Functions bypasses rules; direct client creation is blocked.
+      // createOrder Cloud Function is the ONLY authoritative creation path.
       allow create: if isAdmin();
 
       // UPDATE: Strictly DENIED for customers directly!
       // cancelOrder Cloud Function is the ONLY authoritative path for customer cancellations.
-      // Assigned Delivery Partner may ONLY update delivery status progression and COD confirmation.
+      // Assigned Delivery Partner may ONLY advance status per strict transition machine & field whitelist.
       allow update: if isAuthenticated() && (
         isAdmin() ||
-        (resource.data.assignedPartnerUid == request.auth.uid &&
-         request.resource.data.customerId == resource.data.customerId &&
-         request.resource.data.items == resource.data.items &&
-         request.resource.data.billSummary == resource.data.billSummary &&
-         request.resource.data.deliveryAddress == resource.data.deliveryAddress &&
-         request.resource.data.assignedPartnerUid == resource.data.assignedPartnerUid &&
-         (request.resource.data.orderStatus in ['out_for_delivery', 'delivered', 'failed']))
+        (isAssignedDeliveryPartner(resource.data) && isDeliveryPartnerOrderUpdateValid())
       );
 
       // DELETE: Admin only (for audit / emergency cleanup)
