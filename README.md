@@ -5,7 +5,7 @@ Production-oriented repository for **TaazaTokari V1**.
 ## 1. Project Overview & Business Model
 TaazaTokari operates on an **order-first, next-morning delivery procurement model**:
 - **Ordering Cutoff:** Strictly **11:00 PM IST (23:00)** daily.
-- **Configurable Ordering Window:** Opens at configured time (default `06:00 AM IST`), closes at `11:00 PM IST`. When closed, checkout is blocked with: *"Ordering is currently closed. The next ordering window opens at [opening time]."*
+- **Configurable Ordering Window:** Opening time is Admin-configurable via system settings (provisional default `06:00 AM IST`), closing at the locked cutoff of **11:00 PM IST (23:00)**. When closed, checkout is blocked with: *"Ordering is currently closed. The next ordering window opens at [opening time]."*
 - **Cancellation Cutoff:** Customer self-cancellation is strictly permitted only before **11:00 PM IST** on the order placement date. At or after 11:00 PM, cancellation is blocked with: *"Cancellation window closed."*
 - **Delivery Window:** Fixed **7:00 AM – 9:30 AM** next eligible morning.
 - **Commercial Rules:**

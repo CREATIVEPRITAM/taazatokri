@@ -10,11 +10,20 @@ export interface ISTTimeComponents {
   timeString: string; // HH:mm
 }
 
+export interface OrderWindowOptions {
+  /** Configured opening time in 24hr "HH:mm" format (from Admin system settings) */
+  openingTime: string;
+  /** Configured or locked cutoff time in 24hr "HH:mm" format (defaults to locked 23:00 IST) */
+  cutoffTime?: string;
+  /** Optional reference date for testing or server timestamps */
+  now?: Date;
+}
+
 /**
  * Extracts date and time components strictly in Asia/Kolkata timezone.
  */
 export function getISTComponents(date: Date = new Date()): ISTTimeComponents {
-  // Use Intl.DateTimeFormat for reliable timezone conversion without external deps
+  // Use Intl.DateTimeFormat for reliable timezone conversion without external dependencies
   const formatter = new Intl.DateTimeFormat('en-GB', {
     timeZone: BUSINESS_RULES.TIMEZONE,
     year: 'numeric',
@@ -55,14 +64,41 @@ function parseTimeToMinutes(timeStr: string): number {
 }
 
 /**
- * Checks whether the ordering window is currently open.
- * Returns true strictly if openingTime <= currentTime < cutoffTime in Asia/Kolkata.
+ * Checks whether the ordering window is currently open based on configured opening and cutoff times.
+ *
+ * NOTE: The opening time is NOT a fixed business rule. It must be supplied from Admin-configurable
+ * system settings. The cutoff time defaults to the locked operational rule of 23:00 IST.
+ *
+ * @param openingTime Configured opening time in "HH:mm" 24hr format (e.g. from Admin settings)
+ * @param cutoffTime Configured cutoff time in "HH:mm" (defaults to locked 23:00 IST)
+ * @param now Reference timestamp (defaults to current server/client time)
+ * @returns boolean strictly evaluating openingTime <= currentTime < cutoffTime in Asia/Kolkata
  */
 export function isOrderWindowOpen(
-  now: Date = new Date(),
-  openingTime: string = BUSINESS_RULES.DEFAULT_OPENING_TIME,
-  cutoffTime: string = BUSINESS_RULES.ORDER_CUTOFF_TIME
+  openingTime: string,
+  cutoffTime?: string,
+  now?: Date
+): boolean;
+export function isOrderWindowOpen(options: OrderWindowOptions): boolean;
+export function isOrderWindowOpen(
+  openingTimeOrOptions: string | OrderWindowOptions,
+  cutoffTimeParam: string = BUSINESS_RULES.ORDER_CUTOFF_TIME,
+  nowParam: Date = new Date()
 ): boolean {
+  let openingTime: string;
+  let cutoffTime: string;
+  let now: Date;
+
+  if (typeof openingTimeOrOptions === 'object') {
+    openingTime = openingTimeOrOptions.openingTime;
+    cutoffTime = openingTimeOrOptions.cutoffTime ?? BUSINESS_RULES.ORDER_CUTOFF_TIME;
+    now = openingTimeOrOptions.now ?? new Date();
+  } else {
+    openingTime = openingTimeOrOptions;
+    cutoffTime = cutoffTimeParam;
+    now = nowParam;
+  }
+
   const ist = getISTComponents(now);
   const currentMinutes = ist.hours * 60 + ist.minutes;
   const openMinutes = parseTimeToMinutes(openingTime);
@@ -73,7 +109,8 @@ export function isOrderWindowOpen(
 
 /**
  * Checks whether customer self-cancellation is permitted.
- * In V1: Self-cancellation is strictly permitted before 11:00 PM (23:00) on the order placement date.
+ * In V1: Self-cancellation is strictly permitted before the cancellation cutoff (locked at 23:00 IST)
+ * on the order placement date.
  */
 export function isCancellationAllowed(
   orderCreatedAtIso: string,

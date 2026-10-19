@@ -1,8 +1,10 @@
+/**
+ * Locked business rules per TaazaTokari V1 PRD.
+ */
 export const BUSINESS_RULES = {
   TIMEZONE: 'Asia/Kolkata',
-  DEFAULT_OPENING_TIME: '06:00', // 6:00 AM IST
-  ORDER_CUTOFF_TIME: '23:00', // 11:00 PM IST
-  CANCELLATION_CUTOFF_TIME: '23:00', // 11:00 PM IST
+  ORDER_CUTOFF_TIME: '23:00', // 11:00 PM IST (locked operational order cutoff)
+  CANCELLATION_CUTOFF_TIME: '23:00', // 11:00 PM IST (locked cancellation cutoff)
   MIN_ORDER_AMOUNT: 50, // ₹50 minimum order threshold
   DELIVERY_FEE_BELOW_THRESHOLD: 20, // ₹20 delivery fee for ₹50–₹99
   FREE_DELIVERY_THRESHOLD: 100, // Free delivery for ₹100+
@@ -13,8 +15,15 @@ export const BUSINESS_RULES = {
   SUPPORT_HOURS: '6:00 AM – 10:00 PM',
 } as const;
 
+/**
+ * Provisional / default opening time for the daily ordering window.
+ * This is NOT a locked business rule; the actual value is configurable
+ * by Admin via system settings in Firestore.
+ */
+export const DEFAULT_ORDER_OPENING_TIME = '06:00'; // 06:00 AM IST provisional default
+
 export const MESSAGES = {
-  ORDERING_CLOSED: (openingTime = BUSINESS_RULES.DEFAULT_OPENING_TIME) =>
+  ORDERING_CLOSED: (openingTime: string = DEFAULT_ORDER_OPENING_TIME) =>
     `Ordering is currently closed. The next ordering window opens at ${openingTime}.`,
   CANCELLATION_CLOSED: 'Cancellation window closed.',
   MIN_ORDER_REQUIRED: (min = BUSINESS_RULES.MIN_ORDER_AMOUNT) =>
