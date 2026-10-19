@@ -6,6 +6,7 @@ export * from './components/layout/Sidebar';
 export * from './components/layout/Header';
 export * from './components/layout/navItems';
 export * from './components/layout/ModulePlaceholder';
+export * from './components/dashboard';
 export * from './pages/Login/LoginPage';
 export * from './pages/Dashboard/DashboardPage';
 export * from './App';
