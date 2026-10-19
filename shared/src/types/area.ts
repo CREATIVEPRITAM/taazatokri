@@ -19,7 +19,8 @@ export interface Block {
   sectorId: string;
   sectorName: string;
   cityName: string;
-  primaryPartnerId?: string | null; // 1 primary active partner per Block in V1
+  primaryPartnerUid?: string | null; // Auth UID of primary partner (authoritative)
+  primaryPartnerId?: string | null; // e.g. "DP001" (display reference)
   primaryPartnerName?: string | null;
   active: boolean;
   createdAt: string;

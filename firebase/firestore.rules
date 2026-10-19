@@ -3,7 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Helper Functions ---
+    // --- Authentication & Role Helpers ---
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -12,28 +12,27 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    /**
+     * Authoritative Admin validation:
+     * - Checked via custom claims (admin == true or role == 'admin')
+     * - OR existence in the dedicated 'admins/{uid}' collection.
+     * Role attributes inside the 'users' collection are NEVER trusted for admin authorization.
+     */
     function isAdmin() {
       return isAuthenticated() && (
+        request.auth.token.admin == true ||
         request.auth.token.role == 'admin' ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
 
-    function isDeliveryPartner() {
-      return isAuthenticated() && (
-        request.auth.token.role == 'delivery_partner' ||
-        exists(/databases/$(database)/documents/deliveryPartners/$(request.auth.uid))
-      );
-    }
-
-    // --- Customers / Users ---
+    // --- Customers / Users (Dedicated 'users' collection) ---
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && request.resource.data.role == 'customer';
+      // Customer profile creation on signup
+      allow create: if isOwner(userId) && request.resource.data.accountStatus == 'active';
+      // Customer can update profile, but CANNOT self-promote or modify accountStatus
       allow update: if (isOwner(userId) &&
-                        request.resource.data.role == resource.data.role &&
                         request.resource.data.accountStatus == resource.data.accountStatus)
                     || isAdmin();
       allow delete: if isAdmin();
@@ -44,15 +43,15 @@ service cloud.firestore {
       }
     }
 
-    // --- Admins ---
+    // --- Admins (Dedicated 'admins' collection) ---
     match /admins/{adminId} {
       allow read, write: if isAdmin();
     }
 
-    // --- Delivery Partners ---
-    match /deliveryPartners/{partnerId} {
-      // Partner can view own profile; Admin manages partners
-      allow read: if isOwner(partnerId) || isAdmin();
+    // --- Delivery Partners (Dedicated 'deliveryPartners' collection) ---
+    // Document ID is the partner's Firebase Auth UID (authUid)
+    match /deliveryPartners/{partnerUid} {
+      allow read: if isOwner(partnerUid) || isAdmin();
       allow write: if isAdmin();
     }
 
@@ -102,49 +101,44 @@ service cloud.firestore {
 
     // --- Orders ---
     match /orders/{orderId} {
-      // Read: Customer owner, Assigned Partner, or Admin
+      // READ: Customer who placed it, Assigned Delivery Partner (via assignedPartnerUid), or Admin
       allow read: if isAuthenticated() && (
         resource.data.customerId == request.auth.uid ||
-        resource.data.assignedPartnerId == request.auth.uid ||
+        resource.data.assignedPartnerUid == request.auth.uid ||
         isAdmin()
       );
 
-      // Create: Admin or via Cloud Function (Direct client writes restricted to initial customer order)
-      allow create: if isAuthenticated() && (
-        isAdmin() ||
-        (request.resource.data.customerId == request.auth.uid &&
-         request.resource.data.orderStatus == 'order_placed')
-      );
+      // CREATE: Strictly DENIED for customers directly!
+      // createOrder Cloud Function is the ONLY authoritative write path.
+      // Admin SDK in Cloud Functions bypasses rules; direct client creation is blocked.
+      allow create: if isAdmin();
 
-      // Update:
-      // - Admin has operational control
-      // - Assigned Delivery Partner can update status (assigned -> out_for_delivery -> delivered / failed)
-      // - Customer can cancel only if current status is 'order_placed'
+      // UPDATE: Strictly DENIED for customers directly!
+      // cancelOrder Cloud Function is the ONLY authoritative path for customer cancellations.
+      // Assigned Delivery Partner may ONLY update delivery status progression and COD confirmation.
       allow update: if isAuthenticated() && (
         isAdmin() ||
-        // Delivery Partner status progression
-        (resource.data.assignedPartnerId == request.auth.uid &&
+        (resource.data.assignedPartnerUid == request.auth.uid &&
+         request.resource.data.customerId == resource.data.customerId &&
          request.resource.data.items == resource.data.items &&
          request.resource.data.billSummary == resource.data.billSummary &&
          request.resource.data.deliveryAddress == resource.data.deliveryAddress &&
-         (request.resource.data.orderStatus in ['out_for_delivery', 'delivered', 'failed'])) ||
-        // Customer self-cancellation guard
-        (resource.data.customerId == request.auth.uid &&
-         resource.data.orderStatus == 'order_placed' &&
-         request.resource.data.orderStatus == 'cancelled')
+         request.resource.data.assignedPartnerUid == resource.data.assignedPartnerUid &&
+         (request.resource.data.orderStatus in ['out_for_delivery', 'delivered', 'failed']))
       );
 
+      // DELETE: Admin only (for audit / emergency cleanup)
       allow delete: if isAdmin();
     }
 
     // --- COD Settlement & Partner Payment ---
     match /codSettlements/{settlementId} {
-      allow read: if (isAuthenticated() && resource.data.partnerId == request.auth.uid) || isAdmin();
+      allow read: if (isAuthenticated() && resource.data.partnerUid == request.auth.uid) || isAdmin();
       allow write: if isAdmin();
     }
 
     match /partnerPayments/{paymentId} {
-      allow read: if (isAuthenticated() && resource.data.partnerId == request.auth.uid) || isAdmin();
+      allow read: if (isAuthenticated() && resource.data.partnerUid == request.auth.uid) || isAdmin();
       allow write: if isAdmin();
     }
   }

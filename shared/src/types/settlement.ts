@@ -3,7 +3,8 @@ export type PartnerPaymentStatus = 'pending' | 'paid';
 
 export interface CodSettlement {
   id: string;
-  partnerId: string;
+  partnerUid: string; // Auth UID for authorization
+  partnerId: string; // Display reference (e.g. "DP001")
   partnerName: string;
   date: string; // YYYY-MM-DD
   codCollected: number; // Cash received from delivered orders
@@ -17,7 +18,8 @@ export interface CodSettlement {
 
 export interface PartnerPayment {
   id: string;
-  partnerId: string;
+  partnerUid: string; // Auth UID for authorization
+  partnerId: string; // Display reference (e.g. "DP001")
   partnerName: string;
   date: string; // YYYY-MM-DD
   payableDeliveries: number; // Successful deliveries count

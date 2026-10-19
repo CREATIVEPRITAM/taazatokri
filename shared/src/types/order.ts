@@ -53,7 +53,8 @@ export interface Order {
   deliveryWindow: string; // Fixed "7:00 AM–9:30 AM"
   paymentMethod: 'COD'; // COD only in V1
   orderStatus: OrderStatus;
-  assignedPartnerId?: string | null;
+  assignedPartnerUid?: string | null; // Firebase Auth UID (authoritative security identifier)
+  assignedPartnerId?: string | null; // Human-readable ID (e.g. "DP001", display reference only)
   assignedPartnerName?: string | null;
   failureReason?: DeliveryFailureReason | null;
   failureNote?: string | null;

@@ -1,20 +1,27 @@
-export type UserRole = 'customer' | 'delivery_partner' | 'admin';
-
 export type AccountStatus = 'active' | 'blocked' | 'inactive';
 
+/**
+ * Customer profile stored strictly in the 'users' collection.
+ * Document ID: Firebase Auth UID.
+ */
 export interface CustomerUser {
-  id: string;
+  uid: string; // Firebase Auth UID
   name: string;
   mobile: string;
-  role: 'customer';
   accountStatus: AccountStatus;
   createdAt: string;
   updatedAt: string;
 }
 
+/**
+ * Delivery partner profile stored strictly in the 'deliveryPartners' collection.
+ * Document ID: Firebase Auth UID (authUid).
+ * authUid is used for authorization & Firestore security rules.
+ * partnerId (e.g. "DP001") is used solely for human-readable business display.
+ */
 export interface DeliveryPartnerUser {
-  id: string;
-  partnerId: string; // e.g. "DP001"
+  authUid: string; // Firebase Auth UID (used for authorization)
+  partnerId: string; // Human-readable business reference ID (e.g. "DP001")
   name: string;
   mobile: string;
   photoUrl?: string;
@@ -30,11 +37,15 @@ export interface DeliveryPartnerUser {
   updatedAt: string;
 }
 
+/**
+ * Admin profile stored strictly in the dedicated 'admins' collection.
+ * Document ID: Firebase Auth UID.
+ * Validated via admins/{uid} document existence and/or custom claims.
+ */
 export interface AdminUser {
-  id: string;
+  uid: string; // Firebase Auth UID
   email: string;
   name: string;
-  role: 'admin';
   createdAt: string;
   updatedAt: string;
 }

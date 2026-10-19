@@ -2,15 +2,18 @@ import { db } from '../config/firebase';
 import { COLLECTIONS, Block, DeliveryPartnerUser } from '@taazatokri/shared';
 
 export interface AssignedPartnerResult {
-  partnerId: string;
+  partnerUid: string; // Authoritative Firebase Auth UID for security
+  partnerId: string; // Human-readable Partner ID (e.g. "DP001") for display
   partnerName: string;
 }
 
 /**
  * Resolves the primary active delivery partner mapped to a block.
- * Per PRD:
+ * Per PRD & Security Architecture:
  * - Hierarchy: City -> Sector -> Block
  * - 1 primary active partner per Block in V1
+ * - Primary partner's Firebase Auth UID (primaryPartnerUid) is stored for security checks.
+ * - Human-readable Partner ID (e.g. "DP001") is stored for display reference.
  * - If no mapping exists or partner is inactive, returns null (order remains Unassigned for Attention Required queue).
  */
 export async function findPrimaryPartnerForBlock(
@@ -27,14 +30,15 @@ export async function findPrimaryPartnerForBlock(
     }
 
     const blockData = blockDoc.data() as Block;
-    if (!blockData.active || !blockData.primaryPartnerId) {
+    const targetPartnerUid = blockData.primaryPartnerUid || blockData.primaryPartnerId;
+    if (!blockData.active || !targetPartnerUid) {
       return null;
     }
 
-    // Verify partner is currently active
+    // Verify partner is currently active in 'deliveryPartners' collection (keyed by authUid)
     const partnerDoc = await db
       .collection(COLLECTIONS.DELIVERY_PARTNERS)
-      .doc(blockData.primaryPartnerId)
+      .doc(targetPartnerUid)
       .get();
 
     if (!partnerDoc.exists) {
@@ -47,7 +51,8 @@ export async function findPrimaryPartnerForBlock(
     }
 
     return {
-      partnerId: partnerData.id || blockData.primaryPartnerId,
+      partnerUid: partnerData.authUid || targetPartnerUid,
+      partnerId: partnerData.partnerId || blockData.primaryPartnerId || 'DP001',
       partnerName: partnerData.name || blockData.primaryPartnerName || 'Assigned Partner',
     };
   } catch (error) {

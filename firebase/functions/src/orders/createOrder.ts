@@ -179,6 +179,7 @@ export const createOrder = onCall<CreateOrderRequest>(
       deliveryWindow,
       paymentMethod: 'COD',
       orderStatus: 'order_placed',
+      assignedPartnerUid: partnerMapping ? partnerMapping.partnerUid : null,
       assignedPartnerId: partnerMapping ? partnerMapping.partnerId : null,
       assignedPartnerName: partnerMapping ? partnerMapping.partnerName : null,
       failureReason: null,
