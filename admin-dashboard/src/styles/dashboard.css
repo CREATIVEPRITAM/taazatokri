@@ -557,6 +557,26 @@
   color: var(--danger-600);
 }
 
+.attention-item.success .attention-item-icon-wrapper {
+  background-color: var(--primary-100);
+  color: var(--primary-700);
+}
+
+.attention-badge-count.clear {
+  color: var(--primary-800);
+  background-color: var(--primary-50);
+  border-color: var(--primary-200);
+}
+
+.attention-item-skeleton {
+  height: 68px;
+  background: linear-gradient(90deg, var(--slate-100) 25%, var(--slate-50) 50%, var(--slate-100) 75%);
+  background-size: 200% 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--slate-200);
+  animation: skeleton-shimmer 1.5s infinite ease-in-out;
+}
+
 .attention-item-content {
   flex: 1;
   display: flex;
@@ -591,6 +611,12 @@
 .attention-item.danger .attention-item-count-badge {
   background-color: var(--danger-50);
   color: var(--danger-700);
+}
+
+.attention-item.success .attention-item-count-badge {
+  background-color: var(--primary-50);
+  color: var(--primary-800);
+  border: 1px solid var(--primary-200);
 }
 
 .attention-item-desc {

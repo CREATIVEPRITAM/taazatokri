@@ -9,6 +9,7 @@ export * from './components/layout/ModulePlaceholder';
 export * from './components/dashboard';
 export * from './services/dashboardService';
 export * from './hooks/useDashboardSummary';
+export * from './hooks/useAttentionRequired';
 export * from './pages/Login/LoginPage';
 export * from './pages/Dashboard/DashboardPage';
 export * from './App';

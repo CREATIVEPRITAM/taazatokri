@@ -209,7 +209,7 @@ export const DashboardPage: React.FC = () => {
         {/* Right Operational Column */}
         <div className="dashboard-column">
           {/* Attention Required */}
-          <AttentionRequired />
+          <AttentionRequired selectedDate={selectedDeliveryDate} />
 
           {/* Quick Actions */}
           <QuickActions />

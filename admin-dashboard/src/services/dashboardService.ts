@@ -63,10 +63,18 @@ export async function fetchDeliveryDateMetrics(selectedDate: string) {
   let deliveredToday = 0;
   let failedOrders = 0;
   let todayCodCollection = 0;
+  let unassignedOrders = 0;
 
   snap.forEach((docSnap) => {
     const data = docSnap.data();
     const status = data.orderStatus;
+    const isUnassigned =
+      (!data.assignedPartnerUid || data.assignedPartnerUid.trim() === '') &&
+      status !== 'cancelled';
+
+    if (isUnassigned) {
+      unassignedOrders += 1;
+    }
 
     if (status === 'order_placed' || status === 'confirmed') {
       pendingOrders += 1;
@@ -90,7 +98,61 @@ export async function fetchDeliveryDateMetrics(selectedDate: string) {
     deliveredToday,
     failedOrders,
     todayCodCollection,
+    unassignedOrders,
   };
+}
+
+export interface AttentionRequiredMetrics {
+  unassignedOrders: number;
+  failedDeliveries: number;
+  totalFlagged: number;
+}
+
+/**
+ * Fetches real operational attention items scoped strictly to the selected deliveryDate.
+ */
+export async function fetchAttentionRequiredMetrics(
+  selectedDate: string
+): Promise<AttentionRequiredMetrics> {
+  const metrics = await fetchDeliveryDateMetrics(selectedDate);
+  return {
+    unassignedOrders: metrics.unassignedOrders,
+    failedDeliveries: metrics.failedOrders,
+    totalFlagged: metrics.unassignedOrders + metrics.failedOrders,
+  };
+}
+
+/**
+ * Individual query helper for Unassigned orders for a specific deliveryDate.
+ */
+export async function fetchUnassignedOrdersCount(selectedDate: string): Promise<number> {
+  const ordersRef = collection(db, COLLECTIONS.ORDERS);
+  const q = query(ordersRef, where('deliveryDate', '==', selectedDate));
+  const snap = await getDocs(q);
+
+  let unassignedCount = 0;
+  snap.forEach((docSnap) => {
+    const data = docSnap.data();
+    const isUnassigned =
+      (!data.assignedPartnerUid || data.assignedPartnerUid.trim() === '') &&
+      data.orderStatus !== 'cancelled';
+    if (isUnassigned) {
+      unassignedCount += 1;
+    }
+  });
+  return unassignedCount;
+}
+
+/**
+ * Individual query helper for Failed Deliveries for a specific deliveryDate.
+ */
+export async function fetchFailedDeliveriesCount(selectedDate: string): Promise<number> {
+  const q = query(
+    collection(db, COLLECTIONS.ORDERS),
+    where('deliveryDate', '==', selectedDate),
+    where('orderStatus', '==', 'failed')
+  );
+  return getCollectionCount(q);
 }
 
 /**
