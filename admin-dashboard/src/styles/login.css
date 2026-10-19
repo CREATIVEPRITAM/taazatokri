@@ -1,0 +1,315 @@
+/* Login Screen Styling - Desktop-First Natural Green Accent */
+
+.login-viewport {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 10% 20%, rgba(220, 252, 231, 0.6) 0%, rgba(248, 250, 252, 0.95) 90%);
+  padding: 24px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(226, 232, 240, 0.8);
+  padding: 44px 36px;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary-500), var(--primary-700));
+}
+
+.brand-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.brand-icon-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background-color: var(--primary-50);
+  border: 1px solid var(--primary-200);
+  border-radius: var(--radius-md);
+  color: var(--primary-700);
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.brand-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--slate-900);
+  letter-spacing: -0.025em;
+  margin-bottom: 6px;
+}
+
+.brand-subtitle {
+  font-size: 13.5px;
+  color: var(--slate-500);
+  font-weight: 500;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.form-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--slate-700);
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--slate-400);
+  pointer-events: none;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 14px 12px 42px;
+  font-size: 14.5px;
+  border: 1.5px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  background-color: #ffffff;
+  color: var(--slate-900);
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.form-input:focus {
+  border-color: var(--primary-600);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+}
+
+.form-input.has-error {
+  border-color: var(--danger-500);
+  background-color: var(--danger-50);
+}
+
+.form-input.has-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 12px;
+  color: var(--slate-400);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+}
+
+.toggle-password-btn:hover {
+  color: var(--slate-700);
+}
+
+.field-error {
+  font-size: 12.5px;
+  color: var(--danger-600);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.form-meta {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -6px;
+}
+
+.forgot-password-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-700);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 0;
+  transition: color var(--transition-fast);
+}
+
+.forgot-password-link:hover {
+  color: var(--primary-900);
+  text-decoration: underline;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 13px;
+  background-color: var(--primary-600);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 12px -2px rgba(22, 163, 74, 0.35);
+  margin-top: 4px;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background-color: var(--primary-700);
+  box-shadow: 0 6px 16px -2px rgba(22, 163, 74, 0.45);
+  transform: translateY(-1px);
+}
+
+.submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.alert-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  line-height: 1.45;
+  margin-bottom: 20px;
+}
+
+.alert-banner.error {
+  background-color: var(--danger-50);
+  border: 1px solid var(--danger-100);
+  color: var(--danger-700);
+}
+
+.alert-banner.success {
+  background-color: var(--success-50);
+  border: 1px solid var(--primary-200);
+  color: var(--primary-800);
+}
+
+.alert-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Modal for Password Reset */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+  animation: fadeIn 150ms ease-out;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 420px;
+  background-color: #ffffff;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  padding: 32px 28px;
+  border: 1px solid var(--slate-200);
+  animation: slideUp 200ms ease-out;
+}
+
+.modal-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--slate-900);
+  margin-bottom: 8px;
+}
+
+.modal-description {
+  font-size: 13.5px;
+  color: var(--slate-500);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.btn-secondary {
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--slate-600);
+  background-color: var(--slate-100);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--slate-200);
+  color: var(--slate-800);
+}
+
+.btn-primary {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: var(--primary-600);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all var(--transition-fast);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-700);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
