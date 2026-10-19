@@ -186,19 +186,35 @@ export async function fetchPurchaseRequirementPreview(
   const ordersRef = collection(db, COLLECTIONS.ORDERS);
   const q = query(ordersRef, where('deliveryDate', '==', selectedDate));
 
-  // Fetch orders and catalog products in parallel to resolve category labels
-  const [ordersSnap, productsSnap] = await Promise.all([
+  // Fetch orders, catalog products, and categories in parallel to resolve category labels
+  const [ordersSnap, productsSnap, categoriesSnap] = await Promise.all([
     getDocs(q),
     getDocs(collection(db, COLLECTIONS.PRODUCTS)).catch(() => null),
+    getDocs(collection(db, COLLECTIONS.CATEGORIES)).catch(() => null),
   ]);
 
-  // Build category lookup map (productId -> categoryName)
+  // Build category id-to-name lookup map from categories collection
+  const categoriesMap = new Map<string, string>();
+  if (categoriesSnap) {
+    categoriesSnap.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.name && typeof data.name === 'string' && data.name.trim()) {
+        categoriesMap.set(docSnap.id, data.name.trim());
+      }
+    });
+  }
+
+  // Build product-to-category name lookup map
   const productCategoryMap = new Map<string, string>();
   if (productsSnap) {
     productsSnap.forEach((docSnap) => {
       const data = docSnap.data();
-      if (data.categoryName) {
-        productCategoryMap.set(docSnap.id, data.categoryName);
+      // Tier 1: Check if product document directly contains categoryName
+      if (data.categoryName && typeof data.categoryName === 'string' && data.categoryName.trim()) {
+        productCategoryMap.set(docSnap.id, data.categoryName.trim());
+      } else if (data.categoryId && categoriesMap.has(data.categoryId)) {
+        // Tier 2: If product contains only categoryId, resolve from categories collection
+        productCategoryMap.set(docSnap.id, categoriesMap.get(data.categoryId)!);
       }
     });
   }
@@ -259,7 +275,7 @@ export async function fetchPurchaseRequirementPreview(
       id: `${agg.productId}_${agg.unit}`,
       productId: agg.productId,
       productName: agg.productName,
-      categoryName: productCategoryMap.get(agg.productId) || 'Fresh Produce',
+      categoryName: productCategoryMap.get(agg.productId) || 'Uncategorized',
       totalQuantity: agg.totalQuantity,
       unit: agg.unit,
       orderCount: agg.orderIds.size,
