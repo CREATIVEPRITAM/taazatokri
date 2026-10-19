@@ -11,6 +11,7 @@ export interface StatCardProps {
   variant?: StatCardVariant;
   subtitle?: string;
   badge?: string;
+  loading?: boolean;
 }
 
 export const StatCard: React.FC<StatCardProps> = ({
@@ -18,8 +19,9 @@ export const StatCard: React.FC<StatCardProps> = ({
   value,
   icon: Icon,
   variant = 'neutral',
-  subtitle = 'Static V1 Placeholder',
+  subtitle,
   badge,
+  loading = false,
 }) => {
   return (
     <div className={`stat-card variant-${variant}`}>
@@ -29,14 +31,22 @@ export const StatCard: React.FC<StatCardProps> = ({
         </div>
         {badge && <span className="stat-card-badge">{badge}</span>}
       </div>
+
       <div className="stat-card-body">
-        <span className="stat-card-value">{value}</span>
+        {loading ? (
+          <div className="stat-card-skeleton" aria-label="Loading metric value" />
+        ) : (
+          <span className="stat-card-value">{value}</span>
+        )}
         <span className="stat-card-label">{label}</span>
       </div>
-      <div className="stat-card-footer">
-        <span>{subtitle}</span>
-        <span>•</span>
-      </div>
+
+      {subtitle && (
+        <div className="stat-card-footer">
+          <span>{loading ? 'Refreshing data...' : subtitle}</span>
+          <span>•</span>
+        </div>
+      )}
     </div>
   );
 };
