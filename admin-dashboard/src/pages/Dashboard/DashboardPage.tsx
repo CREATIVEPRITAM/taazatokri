@@ -200,7 +200,7 @@ export const DashboardPage: React.FC = () => {
         {/* Left Operational Column */}
         <div className="dashboard-column">
           {/* Today's Purchase Requirement Preview */}
-          <PurchaseRequirementPreview />
+          <PurchaseRequirementPreview selectedDate={selectedDeliveryDate} />
 
           {/* Delivery Overview (Zero Chart Libs) */}
           <DeliveryOverview />

@@ -155,6 +155,125 @@ export async function fetchFailedDeliveriesCount(selectedDate: string): Promise<
   return getCollectionCount(q);
 }
 
+export interface PurchaseRequirementPreviewItem {
+  id: string;
+  productId: string;
+  productName: string;
+  categoryName: string;
+  totalQuantity: number;
+  unit: string;
+  orderCount: number;
+}
+
+export interface PurchaseRequirementPreviewResult {
+  items: PurchaseRequirementPreviewItem[];
+  totalRequirementsCount: number;
+  selectedDate: string;
+}
+
+/**
+ * Aggregates order items product-wise for the selected deliveryDate.
+ * - Filters by deliveryDate == selectedDate.
+ * - Excludes cancelled orders.
+ * - Preserves unit integrity (groups by productId + unit).
+ * - Resolves category labels from catalog data.
+ * - Returns the top preview rows (default 5).
+ */
+export async function fetchPurchaseRequirementPreview(
+  selectedDate: string,
+  previewLimit: number = 5
+): Promise<PurchaseRequirementPreviewResult> {
+  const ordersRef = collection(db, COLLECTIONS.ORDERS);
+  const q = query(ordersRef, where('deliveryDate', '==', selectedDate));
+
+  // Fetch orders and catalog products in parallel to resolve category labels
+  const [ordersSnap, productsSnap] = await Promise.all([
+    getDocs(q),
+    getDocs(collection(db, COLLECTIONS.PRODUCTS)).catch(() => null),
+  ]);
+
+  // Build category lookup map (productId -> categoryName)
+  const productCategoryMap = new Map<string, string>();
+  if (productsSnap) {
+    productsSnap.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.categoryName) {
+        productCategoryMap.set(docSnap.id, data.categoryName);
+      }
+    });
+  }
+
+  interface AggregatedAccumulator {
+    productId: string;
+    productName: string;
+    unit: string;
+    totalQuantity: number;
+    orderIds: Set<string>;
+  }
+
+  const aggregationMap = new Map<string, AggregatedAccumulator>();
+
+  ordersSnap.forEach((docSnap) => {
+    const order = docSnap.data();
+    // Exclude cancelled orders
+    if (order.orderStatus === 'cancelled') {
+      return;
+    }
+
+    const items = Array.isArray(order.items) ? order.items : [];
+    const orderDocId = docSnap.id || order.id || '';
+
+    items.forEach((item: any) => {
+      if (!item.productId || typeof item.quantity !== 'number' || item.quantity <= 0) {
+        return;
+      }
+
+      const unit = (item.unit || 'unit').trim();
+      // Group by productId + unit strictly preserving unit integrity
+      const groupKey = `${item.productId}:::${unit.toLowerCase()}`;
+
+      const existing = aggregationMap.get(groupKey);
+      if (existing) {
+        existing.totalQuantity += item.quantity;
+        if (orderDocId) {
+          existing.orderIds.add(orderDocId);
+        }
+      } else {
+        const orderIds = new Set<string>();
+        if (orderDocId) {
+          orderIds.add(orderDocId);
+        }
+        aggregationMap.set(groupKey, {
+          productId: item.productId,
+          productName: item.name || 'Produce Item',
+          unit,
+          totalQuantity: item.quantity,
+          orderIds,
+        });
+      }
+    });
+  });
+
+  const allAggregatedItems: PurchaseRequirementPreviewItem[] = Array.from(aggregationMap.values())
+    .map((agg) => ({
+      id: `${agg.productId}_${agg.unit}`,
+      productId: agg.productId,
+      productName: agg.productName,
+      categoryName: productCategoryMap.get(agg.productId) || 'Fresh Produce',
+      totalQuantity: agg.totalQuantity,
+      unit: agg.unit,
+      orderCount: agg.orderIds.size,
+    }))
+    .sort((a, b) => b.totalQuantity - a.totalQuantity || b.orderCount - a.orderCount);
+
+  return {
+    items: allAggregatedItems.slice(0, previewLimit),
+    totalRequirementsCount: allAggregatedItems.length,
+    selectedDate,
+  };
+}
+
+
 /**
  * Individual query helper for Pending orders for a specific deliveryDate.
  */
