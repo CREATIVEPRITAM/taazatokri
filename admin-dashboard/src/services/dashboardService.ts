@@ -122,6 +122,77 @@ export async function fetchAttentionRequiredMetrics(
   };
 }
 
+export interface DeliveryOverviewMetrics {
+  delivered: number;
+  inTransit: number;
+  pending: number;
+  failed: number;
+  totalRelevantOrders: number;
+  completionPercentage: number;
+  deliveredPct: number;
+  inTransitPct: number;
+  pendingPct: number;
+  failedPct: number;
+}
+
+/**
+ * Calculates delivery fulfillment metrics, completion percentage, and distribution bar segments.
+ * Excludes cancelled orders from the denominator.
+ * If totalRelevantOrders is 0, completion percentage is 0%.
+ */
+export function calculateDeliveryOverview(data: {
+  delivered: number;
+  inTransit: number;
+  pending: number;
+  failed: number;
+}): DeliveryOverviewMetrics {
+  const { delivered, inTransit, pending, failed } = data;
+  const totalRelevantOrders = delivered + inTransit + pending + failed;
+
+  const completionPercentage =
+    totalRelevantOrders > 0
+      ? Math.round((delivered / totalRelevantOrders) * 100)
+      : 0;
+
+  const deliveredPct =
+    totalRelevantOrders > 0 ? (delivered / totalRelevantOrders) * 100 : 0;
+  const inTransitPct =
+    totalRelevantOrders > 0 ? (inTransit / totalRelevantOrders) * 100 : 0;
+  const pendingPct =
+    totalRelevantOrders > 0 ? (pending / totalRelevantOrders) * 100 : 0;
+  const failedPct =
+    totalRelevantOrders > 0 ? (failed / totalRelevantOrders) * 100 : 0;
+
+  return {
+    delivered,
+    inTransit,
+    pending,
+    failed,
+    totalRelevantOrders,
+    completionPercentage,
+    deliveredPct: Math.round(deliveredPct),
+    inTransitPct: Math.round(inTransitPct),
+    pendingPct: Math.round(pendingPct),
+    failedPct: Math.round(failedPct),
+  };
+}
+
+/**
+ * Fetches real delivery overview metrics scoped to selectedDate by reusing fetchDeliveryDateMetrics.
+ */
+export async function fetchDeliveryOverviewMetrics(
+  selectedDate: string
+): Promise<DeliveryOverviewMetrics> {
+  const op = await fetchDeliveryDateMetrics(selectedDate);
+  return calculateDeliveryOverview({
+    delivered: op.deliveredToday,
+    inTransit: op.outForDeliveryOrders,
+    pending: op.pendingOrders,
+    failed: op.failedOrders,
+  });
+}
+
+
 /**
  * Individual query helper for Unassigned orders for a specific deliveryDate.
  */

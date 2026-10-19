@@ -202,8 +202,19 @@ export const DashboardPage: React.FC = () => {
           {/* Today's Purchase Requirement Preview */}
           <PurchaseRequirementPreview selectedDate={selectedDeliveryDate} />
 
-          {/* Delivery Overview (Zero Chart Libs) */}
-          <DeliveryOverview />
+          {/* Delivery Overview (Connected with zero duplicate Firestore reads) */}
+          <DeliveryOverview
+            selectedDate={selectedDeliveryDate}
+            preloadedMetrics={{
+              delivered: metrics.deliveredToday,
+              inTransit: metrics.outForDeliveryOrders,
+              pending: metrics.pendingOrders,
+              failed: metrics.failedOrders,
+            }}
+            preloadedLoading={loading}
+            preloadedError={errors.length > 0 ? errors[0] : null}
+            onRetry={refetch}
+          />
         </div>
 
         {/* Right Operational Column */}
